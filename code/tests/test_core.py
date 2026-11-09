@@ -39,6 +39,18 @@ from connectors import simple_icons
 assert [simple_icons.slug(n) for n in ("Coca-Cola", "C++", "Tata Motors", ".NET")] == \
        ["cocacola", "cplusplus", "tatamotors", "dotnet"]
 
+# screenshots: blank-page detection + URL mode needs no search
+import io as _io
+from PIL import Image as _Image
+from core import screenshot
+def _png(img):
+    b = _io.BytesIO(); img.save(b, "PNG"); return b.getvalue()
+assert screenshot.is_blank(_png(_Image.new("RGB", (64, 64), "white")))
+noisy = _Image.new("RGB", (64, 64), "white"); noisy.paste((0, 0, 0), (0, 0, 32, 64))
+assert not screenshot.is_blank(_png(noisy))
+from connectors import web
+assert [a.url for a in web.search("https://a.com/x https://b.org", "screenshot", 5)] == ["https://a.com/x", "https://b.org"]
+
 # slug
 assert pipeline.slug("Hyderabad road, at Night!") == "hyderabad-road-at-night"
 assert pipeline.slug("!!!") == "search"

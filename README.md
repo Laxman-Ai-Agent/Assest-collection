@@ -22,12 +22,22 @@ Also needs `ffmpeg` on PATH (`winget install Gyan.FFmpeg`).
   ```
   Sources: Wikidata official logo (SVG/PNG from Commons), Simple Icons (SVG), website favicon.
   Logos are not CLIP-ranked (exact name lookup). A free license on a logo does NOT remove trademark rights.
+- Screenshots (1920×1080, 16:9, uses the Edge browser already on Windows):
+  ```bash
+  .venv\Scripts\python code\collect.py "Charminar history" --images 0 --screenshots 5
+  .venv\Scripts\python code\collect.py "https://www.bbc.com/news https://example.com" --images 0 --screenshots 5
+  ```
+  A sentence finds web pages (DuckDuckGo text, falls back to news); URLs are captured as given.
+  Waits for the page to load, scrolls so lazy images appear, hides cookie banners (never clicks accept).
+  Error pages (HTTP 4xx/5xx, e.g. 429 rate-limit) and blank renders are NOT saved — the reason is printed.
+  Size, sharpness (`scale = 2` for 4K) and full-page mode are in `config.toml` → `[screenshot]`.
 
 Results:
 ```
 visual-assets\searches\<search-name>\
 ├── images\{free,copyright}\{exact,related}\
 ├── logos\{free,copyright}\
+├── screenshots\copyright\
 └── videos\{free,copyright}\{exact,related}\      ← full videos
            clips\{free,copyright}\{exact,related}\ ← matching short clips
 ```

@@ -15,6 +15,13 @@ max_height = 1080                  # download quality cap
 max_duration_sec = 600             # skip longer videos (full movies etc.)
 max_mb = 300                       # skip bigger files
 
+[screenshot]
+browser = "msedge"                 # Edge already on Windows; or "chrome"
+width = 1920
+height = 1080                      # 16:9, ready for video
+scale = 1                          # 2 = sharper (3840x2160)
+full_page = false                  # true = whole page as one long image
+
 # One section per connector. Add a file in code/connectors/ + a section here.
 # Remove: delete the file, or set enabled = false.
 [connectors.ddg]
@@ -36,6 +43,9 @@ enabled = true
 enabled = true
 
 [connectors.simple_icons]
+enabled = true
+
+[connectors.web]
 enabled = true
 
 # Later (Phase 5): external MCP servers, all handled by one generic connector.

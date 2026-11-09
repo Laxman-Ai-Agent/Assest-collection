@@ -10,6 +10,7 @@ User talks in Telugu; reply in Telugu.
 - `code/core/db.py` — SQLite cache at `visual-assets/_cache/cache.db` (search results, seen URLs, phash, CLIP embeddings).
 - `code/core/rank.py` — CLIP scoring. Model cached in `visual-assets/_cache/models/`.
 - `code/core/video.py` — yt-dlp download (any site / direct URL) + ffmpeg clip split. Clips cached in `_library/_clips/<sha1>_<N>s/`.
+- `code/core/screenshot.py` — web page capture (Edge via Playwright), error-status + blank checks.
 - `code/connectors/*.py` — one source per file, auto-discovered by `connectors/__init__.py`.
 - `code/tests/test_core.py` — single test file.
 - `visual-assets/` — data, gitignored. `_library/` holds each file once (by hash); `searches/<slug>/{images,videos}/[clips/]{free,copyright}/{exact,related}/` hold hardlinks + `sources.csv`.
@@ -28,4 +29,5 @@ User talks in Telugu; reply in Telugu.
 - Phase 2 CLIP rank (exact/related) + phash near-dup removal + `--local`: done. Model ViT-B-32 laion2b, loaded from local file first (offline-safe). Thresholds 0.30/0.22 calibrated on real searches; unrelated query scores < 0.22. Files named `<score>_<source>_<sha>.ext`; reruns clear only files listed in previous `sources.csv`. Known: ddg returns watermarked stock images (alamy etc.)
 - Phase 3 videos: done. Connectors youtube, internet_archive, wikimedia (image+video). Pipeline ranks `Asset.thumb` (preview) before downloading video. `--clip N` splits + ranks clip frames. Output `searches/<slug>/{images,videos}/...`. Empty search results are not cached; failed downloads retried after 1 day. Keyword sources fall back to `connectors.loose()` (OR of words) when the full sentence returns nothing. Network here is flaky (DNS drops) — failures are expected, not bugs.
 - Phase 4 logos: done. Connectors wikidata (P154 logo via Commons + P856 favicon) and simple_icons (CDN SVG). `kind="logo"` is unranked (no CLIP; SVG supported via `pipeline.is_svg`), output `searches/<slug>/logos/{free,copyright}/`. `--local` ignored for logos.
-- Phase 5 (on demand only): screenshots, Telugu input, MCP, web UI, SearXNG
+- Screenshots: done. `core/screenshot.py` (Playwright + installed Edge, `channel="msedge"`, no browser download) + `connectors/web.py` (URL as-is, else DDG text → DDG news fallback; DDG text often rate-limited with HTTP 202). Unranked like logos. Rejects HTTP >= 400 (en.wikipedia returns 429 to headless browsers — do not spoof UA to evade) and blank renders. All original goal asset types now covered.
+- Remaining optional (on demand only): watermark detection, `--retry`, Telugu input, web UI, MCP server, SearXNG

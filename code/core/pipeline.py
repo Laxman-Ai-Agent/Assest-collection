@@ -13,7 +13,7 @@ from pathlib import Path
 from PIL import Image
 
 import connectors
-from core import db, net, rank, video
+from core import db, net, rank, screenshot, video
 
 ROOT = Path(__file__).resolve().parents[2]
 _EXT = {"JPEG": "jpg", "MPO": "jpg", "TIFF": "tif"}
@@ -126,9 +126,9 @@ def run(query, kind, limit, root=ROOT, log=print, local=False, clip=0):
     library.mkdir(parents=True, exist_ok=True)
     con = db.connect(assets_dir / "_cache" / "cache.db")
 
-    # Logos come from exact brand-name lookups, so they skip CLIP (it can't read SVG and
-    # scores abstract marks poorly). --local makes no sense for them: reruns are already cached.
-    ranked = kind != "logo"
+    # Logos (exact brand lookups; CLIP can't read SVG) and screenshots (text-heavy pages CLIP scores
+    # poorly; search order is the relevance) skip CLIP. --local makes no sense for them: reruns are cached.
+    ranked = kind not in ("logo", "screenshot")
     local = local and ranked
 
     # 1. search: internet (cached per connector) or everything already collected (--local)
@@ -174,6 +174,9 @@ def run(query, kind, limit, root=ROOT, log=print, local=False, clip=0):
             if kind == "video":
                 log(f"  downloading: {a.title[:70]}")
                 db.put_file(con, a.url, *video.download(a.url, library, cfg["video"]))
+            elif kind == "screenshot":
+                log(f"  capturing: {a.url[:80]}")
+                db.put_file(con, a.url, *screenshot.capture(a.url, library, cfg["screenshot"], log))
             else:
                 _download(con, library, [a.url])
         sha1, ext = db.get_file(con, a.url) or (None, None)
