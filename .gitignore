@@ -1,0 +1,4 @@
+visual-assets/
+.venv/
+__pycache__/
+*.pyc

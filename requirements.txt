@@ -1,0 +1,8 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+requests
+ddgs
+yt-dlp
+pillow
+imagehash
+torch
+open_clip_torch

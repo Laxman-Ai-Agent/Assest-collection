@@ -1,0 +1,28 @@
+# All settings live here. Code never hardcodes these values.
+
+[paths]
+assets = "visual-assets"          # relative to project root; move to another drive by changing this
+
+[ranking]
+exact_min = 0.30                   # CLIP score >= this  -> exact/
+related_min = 0.22                 # CLIP score >= this  -> related/ ; below -> dropped
+
+[cache]
+search_ttl_days = 7                # reuse search results younger than this
+
+# One section per connector. Add a file in code/connectors/ + a section here.
+# Remove: delete the file, or set enabled = false.
+[connectors.ddg]
+enabled = true
+
+[connectors.wikimedia]
+enabled = true
+
+[connectors.openverse]
+enabled = true
+
+# Later (Phase 5): external MCP servers, all handled by one generic connector.
+# [[mcp_servers]]
+# name = "example"
+# command = "npx some-mcp-server"
+# tool = "search_images"
