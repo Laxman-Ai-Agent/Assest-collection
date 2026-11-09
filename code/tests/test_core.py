@@ -31,6 +31,14 @@ assert pipeline.is_free(ia._license("http://creativecommons.org/licenses/by/4.0/
 from connectors import loose
 assert loose("Charminar Hyderabad at night") == "charminar OR hyderabad OR night"
 
+# logos: SVG detection (no PIL) + simple-icons file naming
+assert pipeline.is_svg(b'<svg xmlns="http://www.w3.org/2000/svg"></svg>')
+assert pipeline.is_svg(b'<?xml version="1.0"?>\n<svg></svg>')
+assert not pipeline.is_svg(b"<!DOCTYPE html><html><svg></svg></html>")
+from connectors import simple_icons
+assert [simple_icons.slug(n) for n in ("Coca-Cola", "C++", "Tata Motors", ".NET")] == \
+       ["cocacola", "cplusplus", "tatamotors", "dotnet"]
+
 # slug
 assert pipeline.slug("Hyderabad road, at Night!") == "hyderabad-road-at-night"
 assert pipeline.slug("!!!") == "search"

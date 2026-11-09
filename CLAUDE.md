@@ -27,5 +27,5 @@ User talks in Telugu; reply in Telugu.
 - Phase 1 images (ddg, wikimedia, openverse) + `_library` hardlinks + `sources.csv`: done. Test: `.venv\Scripts\python code\tests\test_core.py`
 - Phase 2 CLIP rank (exact/related) + phash near-dup removal + `--local`: done. Model ViT-B-32 laion2b, loaded from local file first (offline-safe). Thresholds 0.30/0.22 calibrated on real searches; unrelated query scores < 0.22. Files named `<score>_<source>_<sha>.ext`; reruns clear only files listed in previous `sources.csv`. Known: ddg returns watermarked stock images (alamy etc.)
 - Phase 3 videos: done. Connectors youtube, internet_archive, wikimedia (image+video). Pipeline ranks `Asset.thumb` (preview) before downloading video. `--clip N` splits + ranks clip frames. Output `searches/<slug>/{images,videos}/...`. Empty search results are not cached; failed downloads retried after 1 day. Keyword sources fall back to `connectors.loose()` (OR of words) when the full sentence returns nothing. Network here is flaky (DNS drops) — failures are expected, not bugs.
-- Phase 4 logos (wikidata, simple icons): next
-- Phase 5 on demand: screenshots, Telugu input, MCP, web UI, SearXNG
+- Phase 4 logos: done. Connectors wikidata (P154 logo via Commons + P856 favicon) and simple_icons (CDN SVG). `kind="logo"` is unranked (no CLIP; SVG supported via `pipeline.is_svg`), output `searches/<slug>/logos/{free,copyright}/`. `--local` ignored for logos.
+- Phase 5 (on demand only): screenshots, Telugu input, MCP, web UI, SearXNG

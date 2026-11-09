@@ -32,6 +32,12 @@ enabled = true
 [connectors.internet_archive]
 enabled = true
 
+[connectors.wikidata]
+enabled = true
+
+[connectors.simple_icons]
+enabled = true
+
 # Later (Phase 5): external MCP servers, all handled by one generic connector.
 # [[mcp_servers]]
 # name = "example"

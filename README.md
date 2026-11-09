@@ -16,11 +16,18 @@ Also needs `ffmpeg` on PATH (`winget install Gyan.FFmpeg`).
 ```
 - `--images N` / `--videos N`: max per source (videos default 0 = skip; images only with `--videos 5 --images 0`).
 - `--clip 10`: also cut each matched video into ~10 s clips and keep only the clips that match.
+- Logos: give the brand name.
+  ```bash
+  .venv\Scripts\python code\collect.py "Coca-Cola" --images 0 --logos 5
+  ```
+  Sources: Wikidata official logo (SVG/PNG from Commons), Simple Icons (SVG), website favicon.
+  Logos are not CLIP-ranked (exact name lookup). A free license on a logo does NOT remove trademark rights.
 
 Results:
 ```
 visual-assets\searches\<search-name>\
 ├── images\{free,copyright}\{exact,related}\
+├── logos\{free,copyright}\
 └── videos\{free,copyright}\{exact,related}\      ← full videos
            clips\{free,copyright}\{exact,related}\ ← matching short clips
 ```
