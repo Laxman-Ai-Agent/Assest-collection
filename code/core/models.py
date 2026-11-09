@@ -10,3 +10,4 @@ class Asset:
     page_url: str = ""  # page where it was found (for attribution)
     title: str = ""
     license: str = ""   # as reported by source; "" = unknown
+    thumb: str = ""     # preview image URL (videos); ranked before the big file is downloaded

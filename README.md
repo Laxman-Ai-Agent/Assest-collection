@@ -12,9 +12,29 @@ Also needs `ffmpeg` on PATH (`winget install Gyan.FFmpeg`).
 
 ## Use
 ```bash
-.venv\Scripts\python code\collect.py "Hyderabad road at night in rain" --images 50 --videos 10
+.venv\Scripts\python code\collect.py "Hyderabad road at night in rain" --images 30 --videos 5 --clip 10
 ```
-Results: `visual-assets\searches\<search-name>\{free,copyright}\{exact,related}\`
+- `--images N` / `--videos N`: max per source (videos default 0 = skip; images only with `--videos 5 --images 0`).
+- `--clip 10`: also cut each matched video into ~10 s clips and keep only the clips that match.
+
+Results:
+```
+visual-assets\searches\<search-name>\
+├── images\{free,copyright}\{exact,related}\
+└── videos\{free,copyright}\{exact,related}\      ← full videos
+           clips\{free,copyright}\{exact,related}\ ← matching short clips
+```
+Videos are ranked by thumbnail first, so non-matching videos are never downloaded.
+Limits (quality, max length, max size) are in `config.toml` → `[video]`.
+
+- File names start with the match score (e.g. `39_wikimedia_....jpg`) — sort by name to see best matches.
+- `sources.csv` in each search folder lists score, license and source link for every file.
+- Search only what you already collected (no internet, fast):
+  ```bash
+  .venv\Scripts\python code\collect.py "Hyderabad old city monument" --local
+  ```
+- First run downloads the CLIP model (~600 MB) once; after that it works offline.
+- Too many / too few matches? Tune `exact_min` / `related_min` in `config.toml`.
 
 ## Settings
 Everything is in `config.toml`: asset folder path, match thresholds, cache age, connectors on/off.

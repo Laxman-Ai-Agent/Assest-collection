@@ -1,6 +1,15 @@
 """Registry: every .py in this folder with NAME/KINDS/search() is a connector. Drop a file in to add, delete to remove."""
 import importlib
 import pkgutil
+import re
+
+_STOP = {"a", "an", "the", "at", "in", "on", "of", "and", "with", "for", "to", "by", "is", "are", "from"}
+
+
+def loose(query):
+    """'Charminar Hyderabad at night' -> 'charminar OR hyderabad OR night'. For keyword sources that
+    return nothing on a full sentence; CLIP ranking filters the broader results afterwards."""
+    return " OR ".join(w for w in re.findall(r"\w+", query.lower()) if w not in _STOP)
 
 
 def enabled(cfg, kind):
