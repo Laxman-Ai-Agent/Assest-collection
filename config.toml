@@ -7,6 +7,15 @@ assets = "visual-assets"          # relative to project root; move to another dr
 exact_min = 0.30                   # CLIP score >= this  -> exact/
 related_min = 0.22                 # CLIP score >= this  -> related/ ; below -> dropped
 
+[quality]                          # photos below these are ignored (not applied to logos / screenshots / posts)
+min_side = 720                     # shorter side in pixels (720 = HD)
+min_sharpness = 250                # detail in the sharpest part; real photos >= ~350, blurry / upscaled <= ~170
+
+[related]                          # after a search, search again with the titles of the best images found
+queries = 2                        # extra related searches per run (0 = off); --related N overrides
+per_query = 10                     # results per source for each related search
+remember = 10                      # best titles kept as references for later searches with similar words
+
 [cache]
 search_ttl_days = 7                # reuse search results younger than this
 

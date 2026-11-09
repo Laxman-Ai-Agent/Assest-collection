@@ -18,6 +18,9 @@ def connect(path):
             url TEXT PRIMARY KEY, sha1 TEXT, ext TEXT, at REAL);  -- sha1 NULL = failed, don't retry
         CREATE TABLE IF NOT EXISTS embeds(
             sha1 TEXT PRIMARY KEY, vec BLOB, phash TEXT);  -- CLIP vector computed once per file
+        CREATE TABLE IF NOT EXISTS refs(
+            query TEXT, kind TEXT, title TEXT, score REAL, at REAL,
+            PRIMARY KEY (query, kind, title));               -- titles of the best files per search
     """)
     return con
 
@@ -58,6 +61,17 @@ def get_embed(con, sha1):
 def put_embed(con, sha1, vec, phash):
     con.execute("INSERT OR REPLACE INTO embeds VALUES (?,?,?)", (sha1, vec, phash))
     con.commit()
+
+
+def put_refs(con, query, kind, titled_scores):
+    con.executemany("INSERT OR REPLACE INTO refs VALUES (?,?,?,?,?)",
+                    [(query, kind, t, s, time.time()) for t, s in titled_scores if t])
+    con.commit()
+
+
+def all_refs(con, kind):
+    """-> [(query, title, score)] best first."""
+    return con.execute("SELECT query, title, score FROM refs WHERE kind=? ORDER BY score DESC", (kind,)).fetchall()
 
 
 def all_assets(con, kind):

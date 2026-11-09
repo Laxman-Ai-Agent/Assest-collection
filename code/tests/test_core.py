@@ -84,6 +84,43 @@ with tempfile.TemporaryDirectory() as d:
         if ext == "png":
             assert list(_Image.open(p).text).count("Description") == 1           # replaced, not duplicated
 
+# photo quality: small -> rejected, sharp -> kept, same photo blurred -> rejected
+import random
+from PIL import ImageDraw, ImageFilter
+from core import quality
+qcfg = {"min_side": 720, "min_sharpness": 250}
+random.seed(1)
+photo = _Image.new("RGB", (1200, 800), "gray")
+draw = ImageDraw.Draw(photo)
+for _ in range(400):                                   # crisp edges, like real detail
+    x, y = random.randrange(1200), random.randrange(800)
+    draw.rectangle((x, y, x + random.randrange(5, 60), y + random.randrange(5, 60)),
+                   fill=tuple(random.randrange(256) for _ in range(3)))
+with tempfile.TemporaryDirectory() as d:
+    for name, im, want in (("small", photo.resize((600, 400)), "too small"), ("sharp", photo, None),
+                           ("blurry", photo.filter(ImageFilter.GaussianBlur(4)), "blurry or upscaled")):
+        p = Path(d) / f"{name}.jpg"
+        im.save(p, quality=95)
+        got = quality.check(p, qcfg)
+        assert (got or None) == want or (want and got and got.startswith(want)), (name, got)
+
+# related searches from titles of the best results
+rq = pipeline.related_queries("Taj Mahal at sunrise", [
+    "Agra_03-2016_07_Taj_Mahal_complex.jpg",              # -> new words agra, complex
+    "Taj Mahal Sunrise Stock Photos - Alamy",             # junk words only: adds nothing new
+    "Taj Mahal sunrise",                                  # nothing new
+    "IMG_20190312_064512.jpg",                            # codes only
+    "Yamuna river behind Taj Mahal at dawn",
+    "Taj Mahal, Agra, complex",                           # same words as the first: not repeated
+], 5)
+assert rq == ["agra taj mahal complex", "yamuna river behind taj mahal dawn"], rq
+assert pipeline.related_queries("x", ["a b c d"], 0) == []
+with tempfile.TemporaryDirectory() as d:
+    con = db.connect(Path(d) / "c.db")
+    db.put_refs(con, "taj mahal", "image", [("Taj at dawn", 0.35), ("", 0.9), ("Taj gate", 0.32)])
+    assert db.all_refs(con, "image") == [("taj mahal", "Taj at dawn", 0.35), ("taj mahal", "Taj gate", 0.32)]
+    con.close()
+
 # slug
 assert pipeline.slug("Hyderabad road, at Night!") == "hyderabad-road-at-night"
 assert pipeline.slug("!!!") == "search"

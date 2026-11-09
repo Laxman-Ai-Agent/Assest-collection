@@ -13,7 +13,7 @@ from pathlib import Path
 from PIL import Image
 
 import connectors
-from core import db, net, post_capture, rank, screenshot, stamp, video
+from core import db, net, post_capture, quality, rank, screenshot, stamp, video
 
 ROOT = Path(__file__).resolve().parents[2]
 _EXT = {"JPEG": "jpg", "MPO": "jpg", "TIFF": "tif"}
@@ -127,13 +127,39 @@ def _search(con, cfg, query, kind, limit, log):
     return found
 
 
-def run(query, kind, limit, root=ROOT, log=print, local=False, clip=0):
+_TITLE_NOISE = {"stock", "photo", "photos", "image", "images", "picture", "pictures", "alamy", "shutterstock",
+                "getty", "istock", "dreamstime", "depositphotos", "pexels", "unsplash", "pixabay", "wallpaper",
+                "wallpapers", "jpg", "jpeg", "png", "webp", "file", "free", "download", "royalty", "vector",
+                "img", "dsc", "dscn", "pxl", "com", "www", "http", "https", "youtube", "video", "shorts",
+                "flickr", "commons", "wikimedia", "wiki", "wikipedia", "openverse", "edit", "edited", "copy"}
+
+
+def related_queries(query, titles, n):
+    """Titles of the best files -> up to n new search queries that add words the query didn't have.
+    'Agra_03-2016_07_Taj_Mahal_complex.jpg' -> 'agra taj mahal complex'."""
+    base, out, seen = set(connectors.keywords(query)), [], set()
+    for t in titles:
+        words = [w for w in connectors.keywords(t.replace("_", " "))
+                 if len(w) > 2 and w not in _TITLE_NOISE and not any(c.isdigit() for c in w)]
+        words = list(dict.fromkeys(words))[:6]
+        if len(words) < 2 or not set(words) - base or frozenset(words) in seen:
+            continue                                    # too vague, adds nothing new, or already queued
+        seen.add(frozenset(words))
+        out.append(" ".join(words))
+        if len(out) >= n:
+            break
+    return out
+
+
+def run(query, kind, limit, root=ROOT, log=print, local=False, clip=0, related=None):
     cfg = load_config(root)
-    rk = cfg["ranking"]
+    rk, rel = cfg["ranking"], cfg["related"]
+    related = rel["queries"] if related is None else related
     assets_dir = root / cfg["paths"]["assets"]
     library, models = assets_dir / "_library", assets_dir / "_cache" / "models"
     library.mkdir(parents=True, exist_ok=True)
     con = db.connect(assets_dir / "_cache" / "cache.db")
+    key = query.strip().lower()
 
     # Logos (exact brand lookups; CLIP can't read SVG) and screenshots (text-heavy pages CLIP scores
     # poorly; search order is the relevance) skip CLIP. --local makes no sense for them: reruns are cached.
@@ -143,33 +169,55 @@ def run(query, kind, limit, root=ROOT, log=print, local=False, clip=0):
     # 1. search: internet (cached per connector) or everything already collected (--local)
     found = db.all_assets(con, kind) if local else _search(con, cfg, query, kind, limit, log)
     found = list({a.url: a for a in found}.values())     # dedup by URL
+    via = {a.url: query for a in found}                  # which query found each file
+    preview = lambda a: a.thumb or a.url
+    text_vec = rank.embed_text(query, models) if ranked else None
 
-    text_vec, cands, picked = None, [], []
-    if ranked:
-        # 2. download previews never tried before
-        preview = lambda a: a.thumb or a.url
-        if not local:
+    def rank_all(found):
+        """Steps 2-4. Cached downloads / embeddings make a second call cheap. -> (cands, picked, low)"""
+        if not local:                                     # 2. download previews never tried before
             _download(con, library, {preview(a) for a in found})
-
-        # 3. CLIP score each unique preview (embedding computed once, ever)
-        text_vec = rank.embed_text(query, models)
-        done = set()                                      # cands: (free, score, phash, asset)
-        for a in found:
+        cands, picked, kept, low, done = [], [], [], 0, set()
+        for a in found:                                   # 3. CLIP score each unique preview
             sha1, ext = db.get_file(con, preview(a)) or (None, None)
             if not sha1 or sha1 in done:
                 continue
             done.add(sha1)
+            if kind == "image" and quality.check(library / f"{sha1}.{ext}", cfg["quality"]):
+                low += 1                                  # small / blurry / upscaled photo: ignore
+                continue
             emb = _embed(con, sha1, library / f"{sha1}.{ext}", models)
             if emb:
                 cands.append((is_free(a.license), rank.score(emb[0], text_vec), emb[1], a))
-
         # 4. near-duplicate removal (keeps free + best-scoring copy) and threshold
-        kept = []
         for free, sc, ph, a in sorted(cands, key=lambda c: c[:2], reverse=True):
             # ponytail: O(n^2) phash compare, fine for hundreds of files; use a BK-tree past ~10k
             if match(sc, rk) and not any(rank.near_dup(ph, k) for k in kept):
                 kept.append(ph)
                 picked.append((free, sc, a))
+        return cands, picked, low
+
+    cands, picked, low = [], [], 0
+    if ranked:
+        cands, picked, low = rank_all(found)
+        # Related searches: titles of this run's best files + references remembered from earlier
+        # searches that share at least half of this query's words.
+        if related > 0 and not local:
+            words = set(connectors.keywords(query))
+            remembered = [t for q, t, _ in db.all_refs(con, kind)
+                          if len(words & set(connectors.keywords(q))) * 2 >= max(len(words), 1)]
+            best = [a.title for _, sc, a in picked if match(sc, rk) == "exact"]
+            more = []
+            for rq in related_queries(query, best + remembered, related):
+                log(f"  related search: {rq}")
+                hits = _search(con, cfg, rq, kind, rel["per_query"], log)
+                via.update({a.url: rq for a in hits if a.url not in via})
+                more += hits
+            if more:
+                found = list({a.url: a for a in found + more}.values())
+                cands, picked, low = rank_all(found)
+        # remember the best titles as references for later searches
+        db.put_refs(con, key, kind, [(a.title, sc) for _, sc, a in picked if match(sc, rk) == "exact"][:rel["remember"]])
     else:
         picked = [(is_free(a.license), None, a) for a in found]
 
@@ -234,8 +282,8 @@ def run(query, kind, limit, root=ROOT, log=print, local=False, clip=0):
     if rows:
         with open(out_dir / "sources.csv", "w", newline="", encoding="utf-8-sig") as f:
             w = csv.writer(f)
-            w.writerow(["file", "score", "license", "source", "title", "page_url", "url"])
-            w.writerows(rows)
+            w.writerow(["file", "score", "license", "source", "title", "page_url", "url", "found_by"])
+            w.writerows(r + [via.get(r[6], query)] for r in rows)
     con.close()
     counts = {}
     for r in rows:
@@ -244,5 +292,6 @@ def run(query, kind, limit, root=ROOT, log=print, local=False, clip=0):
         k = r[0].split("/")[0] if kind == "post" else r[0].rsplit("/", 1)[0]
         counts[k] = counts.get(k, 0) + 1
     log("Done: " + (", ".join(f"{k} {v}" for k, v in sorted(counts.items())) or "nothing matched") +
-        f" | {max(len(cands) - len(picked), 0)} dropped (low match / duplicate) -> {out_dir}")
+        f" | {max(len(cands) - len(picked), 0)} dropped (low match / duplicate)"
+        + (f", {low} low quality ignored" if low else "") + f" -> {out_dir}")
     return counts

@@ -13,6 +13,8 @@ User talks in Telugu; reply in Telugu.
 - `code/core/video.py` — yt-dlp download (any site / direct URL) + ffmpeg clip split. Clips cached in `_library/_clips/<sha1>_<N>s/`.
 - `code/core/screenshot.py` — web page capture (Edge via Playwright), error-status + blank checks. `render()` reused by posts.
 - `code/core/post_capture.py` — `identify(url)` (post URL → platform/id/canonical/embed URL) + `capture()`: embed card screenshot, X syndication / Mastodon API metadata, media via yt-dlp, `meta.json` with SHA-256. Cached in `_library/_posts/<platform>_<id>/`.
+- Related searches (in `pipeline.run`): `rank_all()` runs steps 2-4; then `related_queries(query, best exact titles + refs of earlier queries sharing >= half the words, n)` → extra `_search` calls → `rank_all()` again (cached, cheap), still scored vs the ORIGINAL query. Best titles saved to `refs` table. `sources.csv` has `found_by`.
+- `code/core/quality.py` — photo filter for kind="image" (before CLIP): min short side + sharpness = Laplacian variance of the sharpest 4x4 tile (whole-image variance wrongly failed haze/night shots). Calibrated: real >= ~350, blurred/upscaled <= ~170, threshold 250.
 - `code/core/stamp.py` — writes FREE/COPYRIGHT + license + source into JPEG EXIF (lossless segment swap) / PNG text. Called on every placed file and every post file (before hashing). Re-stamps if status changes. Library file names stay the sha1 of the ORIGINAL download (content changes after stamping — never re-verify by hash).
 - `code/core/session.py` — optional user-logged-in Edge profile (`--login`). Never handle passwords; user logs in by hand.
 - `code/connectors/*.py` — one source per file, auto-discovered by `connectors/__init__.py`.

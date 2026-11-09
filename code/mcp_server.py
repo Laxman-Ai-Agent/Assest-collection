@@ -48,7 +48,7 @@ def _status(kind, r):
 @server.tool()
 def collect_assets(query: str, images: int = 10, videos: int = 0, logos: int = 0, screenshots: int = 0,
                    posts: int = 0, clip_seconds: int = 0, local: bool = False, previews: int = 3,
-                   license: str = "all") -> list:
+                   license: str = "all", related: int = -1) -> list:
     """Find and download visual assets for a keyword, sentence or URL (no API keys needed).
 
     query: what you want, e.g. "Hyderabad heavy rain flood"; a brand name for logos; or URL(s) for
@@ -58,6 +58,7 @@ def collect_assets(query: str, images: int = 10, videos: int = 0, logos: int = 0
     local: search only files already collected (fast, offline).
     previews: how many best-matching images to return inline so you can see them.
     license: "all" (default), "free" (CC / public domain only) or "copyright" (only copyrighted).
+    related: extra searches built from the titles of the best results (-1 = config default, 0 = off).
     Every file is labelled [FREE] or [COPYRIGHT]; always tell the user which is which.
     Videos can take minutes. Returns saved file paths with label, match score, license, source link."""
     want = license.lower().strip()
@@ -69,7 +70,8 @@ def collect_assets(query: str, images: int = 10, videos: int = 0, logos: int = 0
         if n <= 0:
             continue
         with contextlib.redirect_stdout(sys.stderr):   # stray prints from libraries must not hit the MCP channel
-            pipeline.run(query, kind, n, local=local, clip=clip_seconds, log=_log)
+            pipeline.run(query, kind, n, local=local, clip=clip_seconds, log=_log,
+                         related=None if related < 0 else related)
         sources = base / f"{kind}s" / "sources.csv"
         if not sources.exists():
             lines.append(f"{kind}s: nothing found")
@@ -81,7 +83,8 @@ def collect_assets(query: str, images: int = 10, videos: int = 0, logos: int = 0
         for r in rows[:100]:
             path, st = sources.parent / r["file"], _status(kind, r)
             label = f"[FREE {r['license']}]" if st == "free" else "[COPYRIGHT]"
-            lines.append(f"  {label} {path} | score {r['score'] or '-'} | {r['source']} | {r['page_url']}")
+            via = f" | found by: {r['found_by']}" if r.get("found_by") and r["found_by"] != query else ""
+            lines.append(f"  {label} {path} | score {r['score'] or '-'} | {r['source']} | {r['page_url']}{via}")
             if path.suffix.lower() in _PREVIEWABLE:
                 candidates.append((float(r["score"] or 0), label, path))
     out = ["\n".join(lines)]

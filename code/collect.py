@@ -19,6 +19,8 @@ p.add_argument("--posts", type=int, default=0,
 p.add_argument("--clip", type=int, default=0, metavar="SEC",
                help="also cut matched videos into SEC-second clips and keep the matching ones")
 p.add_argument("--local", action="store_true", help="search only files already collected (no internet)")
+p.add_argument("--related", type=int, default=None, metavar="N",
+               help="extra searches built from the titles of the best results (default: config, 0 = off)")
 p.add_argument("--login", action="store_true",
                help="open a browser window to log in to X / Instagram yourself (dummy account); enables live search")
 a = p.parse_args()
@@ -33,4 +35,4 @@ if not a.query:
 for kind, n in (("image", a.images), ("video", a.videos), ("logo", a.logos), ("screenshot", a.screenshots), ("post", a.posts)):
     if n:
         print(f"{kind.title()}s{' (local)' if a.local else ''}: {a.query}")
-        pipeline.run(a.query, kind, n, local=a.local, clip=a.clip)
+        pipeline.run(a.query, kind, n, local=a.local, clip=a.clip, related=a.related)

@@ -113,6 +113,22 @@ Everything is in `config.toml`: asset folder path, match thresholds, cache age, 
 
 Remove a source: delete its file, or set `enabled = false`.
 
+## Related searches (learns from what it downloads)
+After each image/video search, the **titles of the best results** are turned into new searches
+(e.g. `Mysore Palace` → *"mysore palace amba vilas"*, *"mysore palace morning"*). Their results are
+still ranked against **your original sentence**, so nothing off-topic gets in.
+The best titles are also **recorded** (`refs` table in `cache.db`) and reused as references when you
+later search with similar words. `sources.csv` → `found_by` shows which search found each file.
+Control: `config.toml` → `[related]` (`queries = 2`), or `--related N` (0 = off); MCP: `related=N`.
+
+## Only good-quality photos
+Photos are ignored (not saved to the search folder) when they are:
+- **too small**: shorter side under `min_side` (720 px = HD), or
+- **blurry / upscaled**: `min_sharpness` (detail in the sharpest part of the photo, so haze, sky and
+  night shots are not punished).
+Tune both in `config.toml` → `[quality]`. Not applied to logos, screenshots or posts.
+The run summary shows how many were ignored ("N low quality ignored").
+
 ## Free vs copyright — the mark stays with the file
 - Folder: `free\` or `copyright\`.
 - File name starts with `FREE_` or `COPYRIGHT_` (so it's visible after copying anywhere).
