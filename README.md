@@ -131,8 +131,11 @@ Limits (quality, max length, max size) are in `config.toml` → `[video]`.
 
 ## Use from any other project (MCP)
 `code\mcp_server.py` exposes one tool, `collect_assets(query, images, videos, logos, screenshots,
-posts, clip_seconds, local, previews, license, related)`. It returns every saved file path with score / license /
-source and shows the best images inline to the AI.
+posts, clip_seconds, local, previews, license, related, detail)`.
+To save tokens it returns a **short summary** by default (~500 tokens per call): counts, the folder,
+the top 5 files per type with their `[FREE]` / `[COPYRIGHT]` label, and 1 small preview image.
+All files are still downloaded; the full list is in each `sources.csv`, or pass `detail=true`
+(long: every file with source links). These limits are guarded by a test in `code\tests\test_core.py`.
 
 **Claude Code** — once, available in every project (change the paths if the project is elsewhere):
 ```bash

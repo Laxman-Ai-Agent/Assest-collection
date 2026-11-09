@@ -22,7 +22,8 @@ User talks in Telugu; reply in Telugu.
 - `visual-assets/` — data, gitignored. `_library/` holds each file once (by hash); `searches/<slug>/{images,videos}/[clips/]{free,copyright}/{exact,related}/` hold hardlinks + `sources.csv`.
 
 ## Rules
-- Connector contract: `NAME`, `KINDS` (set of "image"/"video"/"logo"), `search(query, kind, limit) -> list[Asset]`. Search only — never download, rank, or save.
+- Connector contract: `NAME`, `KINDS` (subset of image/video/logo/screenshot/post), `search(query, kind, limit) -> list[Asset]`. Search only — never download, rank, or save.
+- Token budget: MCP summary output, tool description and preview size are capped by the budget test in `test_core.py`. Never return full file lists / absolute paths per file / big images by default; put detail behind `detail=True`. Keep this file short too.
 - Add connector = new file + `[connectors.<name>]` in `config.toml`. Remove = delete file. Never edit core for a new source.
 - License: `pipeline.is_free` (CC0, PD, CC BY/BY-SA, FAL, GFDL, Attribution...; any NC/ND = not free) → `free/`; else or unknown → `copyright/`. Placed file names start `FREE_` / `COPYRIGHT_`. MCP labels every file and supports `license="free"|"copyright"|"all"`.
 - Check `db.py` cache before any network call, download, or CLIP run. Never redo cached work.
@@ -36,13 +37,10 @@ User talks in Telugu; reply in Telugu.
 - Pitfalls learned: never spoof the browser UA / bypass 403-429 / CAPTCHA; empty search results are not cached; Windows console needs UTF-8 stdout; run tests after every change; ask before `rm -rf` outside scratch (a hook gates it).
 - User: Telugu speaker, wants Telugu replies, simple explanations, and commits only when asked. Commit author is set per-repo (laxmand).
 
-## Status (history, oldest first)
-- Phase 0 setup: done
-- Phase 1 images (ddg, wikimedia, openverse) + `_library` hardlinks + `sources.csv`: done. Test: `.venv\Scripts\python code\tests\test_core.py`
-- Phase 2 CLIP rank (exact/related) + phash near-dup removal + `--local`: done. Model ViT-B-32 laion2b, loaded from local file first (offline-safe). Thresholds 0.30/0.22 calibrated on real searches; unrelated query scores < 0.22. Files named `<score>_<source>_<sha>.ext`; reruns clear only files listed in previous `sources.csv`. Known: ddg returns watermarked stock images (alamy etc.)
-- Phase 3 videos: done. Connectors youtube, internet_archive, wikimedia (image+video). Pipeline ranks `Asset.thumb` (preview) before downloading video. `--clip N` splits + ranks clip frames. Output `searches/<slug>/{images,videos}/...`. Empty search results are not cached; failed downloads retried after 1 day. Keyword sources fall back to `connectors.loose()` (OR of words) when the full sentence returns nothing. Network here is flaky (DNS drops) — failures are expected, not bugs.
-- Phase 4 logos: done. Connectors wikidata (P154 logo via Commons + P856 favicon) and simple_icons (CDN SVG). `kind="logo"` is unranked (no CLIP; SVG supported via `pipeline.is_svg`), output `searches/<slug>/logos/{free,copyright}/`. `--local` ignored for logos.
-- Screenshots: done. `core/screenshot.py` (Playwright + installed Edge, `channel="msedge"`, no browser download) + `connectors/web.py` (URL as-is, else DDG text → DDG news fallback; DDG text often rate-limited with HTTP 202). Unranked like logos. Rejects HTTP >= 400 (en.wikipedia returns 429 to headless browsers — do not spoof UA to evade) and blank renders. All original goal asset types now covered.
-- Social posts (`--posts`): done. Connectors social_search (DDG site:), news_embeds, reddit (RSS), mastodon, telegram (config channels), web (direct URLs; when URLs are given only `web` runs), logged_in (needs `--login`). Verified live: X, Telegram, Mastodon cards+meta+media OK. Reddit embed → 403 for headless (don't spoof UA). TikTok blocked in India. Facebook/Instagram embeds not yet verified with a real post. Not built: original-source clustering of re-uploads (phash/CLIP keyframes + earliest timestamp), archive.org save.
-- MCP server: done. Verified with a real stdio MCP client from another folder (local + internet queries, inline image previews).
-- Remaining optional (on demand only): watermark detection, `--retry`, Telugu input, web UI, SearXNG
+## Facts worth keeping (calibrated / learned the hard way)
+- CLIP ViT-B-32 laion2b: exact >= 0.30, related >= 0.22; unrelated queries score < 0.22. Loaded from local file first (offline).
+- Unranked kinds: logo, screenshot, post (search order = relevance). Ranked: image, video (video ranked by thumbnail before download).
+- Keyword sources fall back to `connectors.loose()` (OR of words). When URLs are given, only the `web` connector runs.
+- Failed downloads retried after 1 day; empty searches not cached. Network here drops DNS often — not a bug.
+- Blocked (don't work around): Reddit embeds 403, en.wikipedia 429 for headless, TikTok in India, DDG text often HTTP 202.
+- Commits: author `laxmand`, remote `origin` = GitHub above; push after commit when the user asks.

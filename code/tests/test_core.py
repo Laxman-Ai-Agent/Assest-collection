@@ -121,6 +121,27 @@ with tempfile.TemporaryDirectory() as d:
     assert db.all_refs(con, "image") == [("taj mahal", "Taj at dawn", 0.35), ("taj mahal", "Taj gate", 0.32)]
     con.close()
 
+# MCP token budget: what the AI receives per call must stay small (regression guard)
+import mcp_server
+fake = [{"file": f"{'free' if i % 3 else 'copyright'}/exact/{'FREE' if i % 3 else 'COPYRIGHT'}_{30 + i % 9}_wikimedia_"
+                 f"{i:012d}.jpg", "score": f"0.{300 + i}", "license": "CC BY-SA 4.0" if i % 3 else "unknown",
+         "source": "wikimedia", "title": "A long descriptive title " * 4,
+         "page_url": "https://commons.wikimedia.org/wiki/File:" + "x" * 80, "url": "https://u/" + "y" * 80,
+         "found_by": "related words"} for i in range(60)]
+folder = Path(r"E:\movies\Assest-collection\visual-assets\searches\some-long-search-name\images")
+lines, cands = mcp_server.report("image", folder, fake, "q")
+summary = "\n".join([mcp_server._NOTICE] + lines)
+assert len(lines) == 1 + mcp_server.TOP + 1, lines                 # header + top files + "+N more"
+assert len(summary) <= 1200, f"MCP summary grew to {len(summary)} chars (~{len(summary) // 4} tokens)"
+assert all(("[COPYRIGHT]" in l) or ("[FREE " in l) for l in lines[1:-1])   # every file clearly marked
+assert len(mcp_server.report("image", folder, fake, "q", detail=True)[0]) == 1 + 60
+assert mcp_server.PREVIEW_PX <= 384
+doc = mcp_server.collect_assets.__doc__ or ""
+assert len(doc) <= 900, f"tool description grew to {len(doc)} chars (sent to the AI every session)"
+post_rows = [{"file": f"x/1/{f}", "score": "", "license": "unknown", "source": "web", "title": "",
+              "page_url": "", "url": "u", "found_by": "q"} for f in ("post.png", "meta.json", "media/video_00001.mp4")]
+assert mcp_server.report("post", folder, post_rows, "q")[0][1:] == ["  [COPYRIGHT] x/1/post.png"]
+
 # slug
 assert pipeline.slug("Hyderabad road, at Night!") == "hyderabad-road-at-night"
 assert pipeline.slug("!!!") == "search"
