@@ -13,7 +13,7 @@ from pathlib import Path
 from PIL import Image
 
 import connectors
-from core import db, net, rank, screenshot, video
+from core import db, net, post_capture, rank, screenshot, video
 
 ROOT = Path(__file__).resolve().parents[2]
 _EXT = {"JPEG": "jpg", "MPO": "jpg", "TIFF": "tif"}
@@ -101,7 +101,10 @@ def _clear(out_dir):
 
 def _search(con, cfg, query, kind, limit, log):
     key, found = query.strip().lower(), []
+    urls_given = any(w.startswith(("http://", "https://")) for w in query.split())
     for name, mod in connectors.enabled(cfg, kind).items():
+        if urls_given and name != "web":
+            continue                          # URLs given: capture exactly those, don't keyword-search the URL text
         hits = db.get_search(con, name, kind, key, cfg["cache"]["search_ttl_days"])
         if hits is None:
             try:
@@ -128,7 +131,7 @@ def run(query, kind, limit, root=ROOT, log=print, local=False, clip=0):
 
     # Logos (exact brand lookups; CLIP can't read SVG) and screenshots (text-heavy pages CLIP scores
     # poorly; search order is the relevance) skip CLIP. --local makes no sense for them: reruns are cached.
-    ranked = kind not in ("logo", "screenshot")
+    ranked = kind not in ("logo", "screenshot", "post")
     local = local and ranked
 
     # 1. search: internet (cached per connector) or everything already collected (--local)
@@ -170,6 +173,15 @@ def run(query, kind, limit, root=ROOT, log=print, local=False, clip=0):
     rows, seen = [], set()
     for free, sc, a in picked:
         lic = "free" if free else "copyright"
+        if kind == "post":                    # a post is a folder (card + media + meta.json), cached by post id
+            folder = post_capture.capture(a, library / "_posts", cfg["post"], cfg["video"], log)
+            if folder:
+                dest = out_dir / Path(*folder.name.split("_", 1))          # posts/<platform>/<id>/
+                for f in sorted(p for p in folder.rglob("*") if p.is_file()):
+                    _link(f, dest / f.relative_to(folder))
+                    rows.append([(dest / f.relative_to(folder)).relative_to(out_dir).as_posix(), "", "unknown",
+                                 a.source, a.title, a.page_url, a.url])
+            continue
         if not local and db.get_file(con, a.url) is None:
             if kind == "video":
                 log(f"  downloading: {a.title[:70]}")
@@ -217,7 +229,9 @@ def run(query, kind, limit, root=ROOT, log=print, local=False, clip=0):
     con.close()
     counts = {}
     for r in rows:
-        k = r[0].rsplit("/", 1)[0]
+        if kind == "post" and not r[0].endswith("/post.png"):
+            continue                          # count posts per platform, not their files
+        k = r[0].split("/")[0] if kind == "post" else r[0].rsplit("/", 1)[0]
         counts[k] = counts.get(k, 0) + 1
     log("Done: " + (", ".join(f"{k} {v}" for k, v in sorted(counts.items())) or "nothing matched") +
         f" | {max(len(cands) - len(picked), 0)} dropped (low match / duplicate) -> {out_dir}")

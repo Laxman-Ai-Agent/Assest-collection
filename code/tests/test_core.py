@@ -51,6 +51,23 @@ assert not screenshot.is_blank(_png(noisy))
 from connectors import web
 assert [a.url for a in web.search("https://a.com/x https://b.org", "screenshot", 5)] == ["https://a.com/x", "https://b.org"]
 
+# social posts: URL -> (platform, id, canonical URL, embed URL); non-post URLs -> None
+from core.post_capture import identify, trim
+cases = {
+    "https://twitter.com/elonmusk/status/123?ref_src=twsrc": ("x", "123", "https://x.com/elonmusk/status/123"),
+    "https://www.instagram.com/reel/AbC-1_x/?utm=1": ("instagram", "AbC-1_x", "https://www.instagram.com/reel/AbC-1_x/"),
+    "https://old.reddit.com/r/india/comments/abc12/some_title/": ("reddit", "abc12", "https://www.reddit.com/r/india/comments/abc12/"),
+    "https://t.me/s/durov/400": ("telegram", "durov_400", "https://t.me/durov/400"),
+    "https://mastodon.social/@Gargron/1175": ("mastodon", "Gargron_1175", "https://mastodon.social/@Gargron/1175"),
+}
+for url, want in cases.items():
+    assert identify(url)[:3] == want, (url, identify(url))
+assert identify("https://www.facebook.com/nasa/posts/pfbid0abc")[0] == "facebook"
+assert identify("https://x.com/elonmusk").__class__ is type(None)          # profile, not a post
+assert identify("https://t.me/durov") is None and identify("https://example.com/a/b") is None
+card = _Image.new("RGB", (100, 100), "white"); card.paste((0, 0, 0), (40, 40, 60, 60))
+assert _Image.open(_io.BytesIO(trim(_png(card), pad=0))).size == (20, 20)     # margins cropped
+
 # slug
 assert pipeline.slug("Hyderabad road, at Night!") == "hyderabad-road-at-night"
 assert pipeline.slug("!!!") == "search"

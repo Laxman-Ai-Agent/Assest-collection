@@ -22,6 +22,11 @@ height = 1080                      # 16:9, ready for video
 scale = 1                          # 2 = sharper (3840x2160)
 full_page = false                  # true = whole page as one long image
 
+[post]
+browser = "msedge"
+media = true                       # also download the post's images / videos (when public)
+page_screenshot = false            # also screenshot the original page (X / Instagram often show a login wall)
+
 # One section per connector. Add a file in code/connectors/ + a section here.
 # Remove: delete the file, or set enabled = false.
 [connectors.ddg]
@@ -47,6 +52,27 @@ enabled = true
 
 [connectors.web]
 enabled = true
+
+# --- social posts (--posts N) ---
+[connectors.social_search]         # '<query> site:x.com' etc. on DuckDuckGo
+enabled = true
+
+[connectors.news_embeds]           # posts embedded inside news articles about the query
+enabled = true
+
+[connectors.reddit]                # Reddit search RSS
+enabled = true
+
+[connectors.mastodon]
+enabled = true
+instance = "mastodon.social"
+
+[connectors.logged_in]             # live X search + Instagram tags; only after `collect.py --login`
+enabled = true                     # (dummy account, your risk: automated use is against their terms)
+
+[connectors.telegram]              # public channels to search, by username (t.me/<username>)
+enabled = true
+channels = []                      # e.g. ["durov"]; add news channels you trust
 
 # Later (Phase 5): external MCP servers, all handled by one generic connector.
 # [[mcp_servers]]

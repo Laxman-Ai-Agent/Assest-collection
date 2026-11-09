@@ -25,8 +25,10 @@ def is_blank(png_bytes):
     return ImageStat.Stat(Image.open(io.BytesIO(png_bytes)).convert("L")).stddev[0] < 3
 
 
-def capture(url, library, cfg, log=print):
-    """-> (sha1, "png"), or (None, None) if the page failed, returned an error status, or rendered blank."""
+def render(url, cfg, log=print, extract=None):
+    """Load url and screenshot it. cfg: browser, width, height, scale, full_page.
+    extract: optional JS function run on the loaded page; its result is returned too.
+    -> (png bytes, extract result), or (None, None) on error status / failure / blank render."""
     try:
         # ponytail: one browser launch per page (~1 s); keep one browser open if you screenshot hundreds
         with sync_playwright() as p:
@@ -43,8 +45,12 @@ def capture(url, library, cfg, log=print):
             except Exception:
                 pass                                  # busy sites never go idle; what loaded is enough
             page.evaluate(_SCROLL)
-            page.add_style_tag(content=_HIDE)
-            page.wait_for_timeout(800)                # let images / fonts settle after scrolling
+            try:
+                page.add_style_tag(content=_HIDE)
+            except Exception:
+                pass                                  # strict CSP (e.g. Mastodon) blocks injected styles: fine
+            page.wait_for_timeout(cfg.get("settle_ms", 800))   # let images / fonts / embeds settle
+            info = page.evaluate(extract) if extract else None
             data = page.screenshot(full_page=cfg["full_page"], type="png")
             browser.close()
     except Exception as e:
@@ -52,6 +58,14 @@ def capture(url, library, cfg, log=print):
         return None, None
     if is_blank(data):
         log(f"  ! blank page, not saved: {url[:70]}")
+        return None, None
+    return data, info
+
+
+def capture(url, library, cfg, log=print):
+    """-> (sha1, "png") saved in library, or (None, None)."""
+    data, _ = render(url, cfg, log)
+    if not data:
         return None, None
     sha1 = hashlib.sha1(data).hexdigest()
     path = library / f"{sha1}.png"

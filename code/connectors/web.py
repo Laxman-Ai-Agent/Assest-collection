@@ -5,11 +5,14 @@ from ddgs import DDGS
 from core.models import Asset
 
 NAME = "web"
-KINDS = {"screenshot"}
+KINDS = {"screenshot", "post"}
 
 
 def search(query, kind, limit):
     urls = [w for w in query.split() if w.startswith(("http://", "https://"))]
+    if kind == "post":                             # posts: only URLs given directly (sentences: other connectors)
+        from core.post_capture import identify
+        return [Asset(url=i[2], kind=kind, source=NAME, page_url=u, title=u) for u in urls if (i := identify(u))]
     if urls:
         return [Asset(url=u, kind=kind, source=NAME, page_url=u, title=u) for u in urls]
     try:

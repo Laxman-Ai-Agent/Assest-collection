@@ -31,6 +31,24 @@ Also needs `ffmpeg` on PATH (`winget install Gyan.FFmpeg`).
   Waits for the page to load, scrolls so lazy images appear, hides cookie banners (never clicks accept).
   Error pages (HTTP 4xx/5xx, e.g. 429 rate-limit) and blank renders are NOT saved — the reason is printed.
   Size, sharpness (`scale = 2` for 4K) and full-page mode are in `config.toml` → `[screenshot]`.
+- Social posts (X, Instagram, Facebook, Reddit, Telegram, Mastodon):
+  ```bash
+  .venv\Scripts\python code\collect.py "earthquake" --images 0 --posts 5
+  .venv\Scripts\python code\collect.py "https://x.com/elonmusk/status/1585341984679469056" --images 0 --posts 1
+  ```
+  Each post → `posts\<platform>\<id>\`: `post.png` (the platform's own embed card: avatar, name,
+  text, media, time), `media\` (images/videos when public), `meta.json` (original URL, author,
+  post time, capture time UTC, text, likes, SHA-256 of every file). Deleted / private / login-only
+  posts are reported, not saved.
+  Discovery without login: search-engine `site:` results, posts embedded in news articles,
+  Reddit RSS, Mastodon hashtags, Telegram channels listed in `config.toml`.
+  Optional live X search / Instagram hashtags: run `collect.py --login` once and log in **yourself**
+  in the window (dummy account only — automated use is against their terms; the tool never sees
+  your password). Log out: delete `visual-assets\_cache\browser_profile`.
+  Known limits: brand-new X/Instagram posts need `--login`; Reddit blocks automated browsers
+  (403) so Reddit cards can't be captured; TikTok is blocked in India; DuckDuckGo search is
+  often rate-limited. All posts belong to their authors — credit and link them, ask for permission
+  before reusing footage.
 
 Results:
 ```
@@ -38,6 +56,7 @@ visual-assets\searches\<search-name>\
 ├── images\{free,copyright}\{exact,related}\
 ├── logos\{free,copyright}\
 ├── screenshots\copyright\
+├── posts\<platform>\<id>\{post.png, media\, meta.json}
 └── videos\{free,copyright}\{exact,related}\      ← full videos
            clips\{free,copyright}\{exact,related}\ ← matching short clips
 ```

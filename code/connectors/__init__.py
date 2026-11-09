@@ -6,10 +6,21 @@ import re
 _STOP = {"a", "an", "the", "at", "in", "on", "of", "and", "with", "for", "to", "by", "is", "are", "from"}
 
 
+def keywords(query):
+    """'Charminar Hyderabad at night' -> ['charminar', 'hyderabad', 'night']"""
+    return [w for w in re.findall(r"\w+", query.lower()) if w not in _STOP]
+
+
 def loose(query):
     """'Charminar Hyderabad at night' -> 'charminar OR hyderabad OR night'. For keyword sources that
     return nothing on a full sentence; CLIP ranking filters the broader results afterwards."""
-    return " OR ".join(w for w in re.findall(r"\w+", query.lower()) if w not in _STOP)
+    return " OR ".join(keywords(query))
+
+
+def settings(name):
+    """A connector's own section of config.toml, e.g. [connectors.telegram]."""
+    from core.pipeline import load_config
+    return load_config().get("connectors", {}).get(name, {})
 
 
 def enabled(cfg, kind):
