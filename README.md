@@ -72,6 +72,33 @@ Limits (quality, max length, max size) are in `config.toml` → `[video]`.
 - First run downloads the CLIP model (~600 MB) once; after that it works offline.
 - Too many / too few matches? Tune `exact_min` / `related_min` in `config.toml`.
 
+## Use from any other project (MCP)
+`code\mcp_server.py` exposes one tool, `collect_assets(query, images, videos, logos, screenshots,
+posts, clip_seconds, local, previews)`. It returns every saved file path with score / license /
+source and shows the best images inline to the AI.
+
+**Claude Code** — once, available in every project:
+```bash
+claude mcp add --scope user asset-collector -- "E:\movies\Assest-collection\.venv\Scripts\python.exe" "E:\movies\Assest-collection\code\mcp_server.py"
+```
+Or only for one project: put this in that project's `.mcp.json`:
+```json
+{
+  "mcpServers": {
+    "asset-collector": {
+      "command": "E:\\movies\\Assest-collection\\.venv\\Scripts\\python.exe",
+      "args": ["E:\\movies\\Assest-collection\\code\\mcp_server.py"]
+    }
+  }
+}
+```
+**Claude Desktop**: same `mcpServers` block in `%APPDATA%\Claude\claude_desktop_config.json`, then restart.
+
+Then just ask: *"Hyderabad flood images ivvu"*, *"Infosys logo kavali"*,
+*"ee X post screenshot teesuko: https://x.com/..."*. Files are saved here in `visual-assets\`.
+Video downloads can take minutes; if the client times out, raise its tool timeout
+(Claude Code: `MCP_TOOL_TIMEOUT=600000` environment variable).
+
 ## Settings
 Everything is in `config.toml`: asset folder path, match thresholds, cache age, connectors on/off.
 

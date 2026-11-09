@@ -7,3 +7,4 @@ imagehash
 torch
 open_clip_torch
 playwright
+mcp>=2

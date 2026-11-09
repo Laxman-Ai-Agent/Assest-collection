@@ -5,6 +5,7 @@ User talks in Telugu; reply in Telugu.
 
 ## Layout
 - `code/collect.py` — CLI entry only. No logic.
+- `code/mcp_server.py` — MCP server (mcp 2.x: `MCPServer`, not FastMCP). One tool `collect_assets` → `pipeline.run` per kind, returns paths from `sources.csv` + top images inline. stdout is the MCP channel: all logs to stderr.
 - `code/core/models.py` — `Asset` dataclass: the ONE data shape passed everywhere.
 - `code/core/pipeline.py` — search → dedup → download → rank → license → save. Reads `config.toml`.
 - `code/core/db.py` — SQLite cache at `visual-assets/_cache/cache.db` (search results, seen URLs, phash, CLIP embeddings).
@@ -33,4 +34,5 @@ User talks in Telugu; reply in Telugu.
 - Phase 4 logos: done. Connectors wikidata (P154 logo via Commons + P856 favicon) and simple_icons (CDN SVG). `kind="logo"` is unranked (no CLIP; SVG supported via `pipeline.is_svg`), output `searches/<slug>/logos/{free,copyright}/`. `--local` ignored for logos.
 - Screenshots: done. `core/screenshot.py` (Playwright + installed Edge, `channel="msedge"`, no browser download) + `connectors/web.py` (URL as-is, else DDG text → DDG news fallback; DDG text often rate-limited with HTTP 202). Unranked like logos. Rejects HTTP >= 400 (en.wikipedia returns 429 to headless browsers — do not spoof UA to evade) and blank renders. All original goal asset types now covered.
 - Social posts (`--posts`): done. Connectors social_search (DDG site:), news_embeds, reddit (RSS), mastodon, telegram (config channels), web (direct URLs; when URLs are given only `web` runs), logged_in (needs `--login`). Verified live: X, Telegram, Mastodon cards+meta+media OK. Reddit embed → 403 for headless (don't spoof UA). TikTok blocked in India. Facebook/Instagram embeds not yet verified with a real post. Not built: original-source clustering of re-uploads (phash/CLIP keyframes + earliest timestamp), archive.org save.
-- Remaining optional (on demand only): watermark detection, `--retry`, Telugu input, web UI, MCP server, SearXNG
+- MCP server: done. Verified with a real stdio MCP client from another folder (local + internet queries, inline image previews).
+- Remaining optional (on demand only): watermark detection, `--retry`, Telugu input, web UI, SearXNG
