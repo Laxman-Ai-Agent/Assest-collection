@@ -29,7 +29,14 @@ User talks in Telugu; reply in Telugu.
 - One failing connector logs a warning; pipeline continues.
 - No hardcoded settings — add to `config.toml`.
 
-## Status
+## Start here on a new computer / new session
+- Full human setup + status table: `README.md` ("Setup on a new computer", "Project status"). Repo: https://github.com/Laxman-Ai-Agent/Assest-collection (branch `main`).
+- Verify first: `.venv\Scripts\python code\tests\test_core.py` → must print `all tests passed`. Needs network for live searches; `visual-assets/` is NOT in git, so a fresh clone has no data/cache/model (CLIP ~600 MB downloads on first ranked search).
+- Everything planned is built. Open ideas (build only when asked): original-uploader detection among re-uploads, watermark detection, `--retry`, Telugu input, web UI, SearXNG, archive.org save. Unverified: `--login`, Instagram/Facebook post capture.
+- Pitfalls learned: never spoof the browser UA / bypass 403-429 / CAPTCHA; empty search results are not cached; Windows console needs UTF-8 stdout; run tests after every change; ask before `rm -rf` outside scratch (a hook gates it).
+- User: Telugu speaker, wants Telugu replies, simple explanations, and commits only when asked. Commit author is set per-repo (laxmand).
+
+## Status (history, oldest first)
 - Phase 0 setup: done
 - Phase 1 images (ddg, wikimedia, openverse) + `_library` hardlinks + `sources.csv`: done. Test: `.venv\Scripts\python code\tests\test_core.py`
 - Phase 2 CLIP rank (exact/related) + phash near-dup removal + `--local`: done. Model ViT-B-32 laion2b, loaded from local file first (offline-safe). Thresholds 0.30/0.22 calibrated on real searches; unrelated query scores < 0.22. Files named `<score>_<source>_<sha>.ext`; reruns clear only files listed in previous `sources.csv`. Known: ddg returns watermarked stock images (alamy etc.)

@@ -1,14 +1,70 @@
 # Asset Collector
 
-Give a sentence, get matching images, videos and logos from the web — no API keys.
-Files with a free license go to `free/`, everything else to `copyright/`.
+Give a sentence, get matching images, videos, clips, logos, screenshots and social posts from the
+web — **no API keys**. Free-licensed files go to `free/`, everything else to `copyright/`, and every
+file is marked so you always know which is which.
 
-## Setup (once)
+> **తెలుగు సారాంశం:** ఒక వాక్యం ఇస్తే దానికి సరిపోయే మంచి quality images, videos, clips, logos,
+> screenshots, social posts (X, Telegram, Mastodon) API key లేకుండా download అవుతాయి. Free వాటిని
+> `free\` లో, copyright ఉన్నవాటిని `copyright\` లో పెడుతుంది. ప్రతి file పేరు `FREE_` / `COPYRIGHT_`
+> తో మొదలవుతుంది, file లోపల కూడా license + source link ఉంటాయి. కొత్త computer లో మొదలుపెట్టాలంటే
+> కింద ఉన్న "Setup on a new computer" చూడండి. ఏది పని చేస్తుంది, ఏది చేయదు అనేది "Project status" లో ఉంది.
+
+## Setup on a new computer
+Tested on Windows 11 with Python 3.12. Needs **git**, **Python 3.12**, **ffmpeg**, and **Microsoft Edge**
+(built into Windows; used for screenshots and posts).
 ```bash
+git clone https://github.com/Laxman-Ai-Agent/Assest-collection.git
+cd Assest-collection
 python -m venv .venv
 .venv\Scripts\python -m pip install -r requirements.txt
+winget install Gyan.FFmpeg
+.venv\Scripts\python code\tests\test_core.py
+.venv\Scripts\python code\collect.py "Taj Mahal at sunrise" --images 5
 ```
-Also needs `ffmpeg` on PATH (`winget install Gyan.FFmpeg`).
+- Versions this was built and tested with: torch 2.15 (CPU), mcp 2.3, playwright 1.64, ddgs 9.16,
+  yt-dlp 2026.10, pillow 13, imagehash 4.3. If a future version breaks something, install these
+  (`mcp` 1.x has a different API: `FastMCP` instead of `MCPServer`).
+- The install downloads about 3 GB (PyTorch CPU + libraries). The first search downloads the CLIP model
+  (~600 MB) once; after that ranking works offline. The test must print `all tests passed`.
+- **`visual-assets\` is not in git** (downloads, cache, CLIP model, login profile), so a new computer starts
+  empty. To keep old downloads and the cache, copy the whole `visual-assets\` folder from the old computer
+  into the project folder (hardlinked duplicates become separate copies, so it may take more disk).
+- Data somewhere else? Set `[paths] assets` in `config.toml` (relative to the project, or an absolute path).
+- MCP: run the `claude mcp add` command below again with the new computer's paths.
+- `--login` sessions do not move between computers (they live in `visual-assets\_cache\browser_profile`).
+- Mac / Linux (untested): use `.venv/bin/python`, set `browser = "chromium"` in `[screenshot]` and `[post]`,
+  and run `.venv/bin/python -m playwright install chromium`.
+
+## Project status (November 2026)
+**Works — verified with real searches:**
+
+| What | How | Notes |
+|---|---|---|
+| Images | `--images N` | DuckDuckGo, Wikimedia, Openverse; CLIP-ranked into `exact` / `related` |
+| Good quality only | automatic | under 720 px or blurry/upscaled photos are ignored (`[quality]`) |
+| Related searches | automatic | titles of the best results → extra searches; remembered for later searches |
+| Videos + clips | `--videos N --clip 10` | YouTube, Internet Archive, Wikimedia; ranked by thumbnail before download |
+| Logos | `--logos N` (query = brand) | Wikidata official logo, Simple Icons SVG, favicon |
+| Web screenshots | `--screenshots N` | 1920×1080; error / blank pages rejected |
+| Social posts | `--posts N` | X, Telegram, Mastodon: embed card + media + `meta.json` |
+| Free / copyright marks | automatic | folder + `FREE_`/`COPYRIGHT_` name + license inside JPEG/PNG |
+| Offline search | `--local` | re-ranks everything already downloaded |
+| MCP server | `code\mcp_server.py` | use from any project / Claude by prompt |
+
+**Known limits:**
+- DuckDuckGo search is often rate-limited; other sources keep working and empty results are retried next run.
+- Reddit blocks automated browsers (403) → no Reddit post cards. TikTok is blocked in India.
+- Instagram / Facebook post capture is written but not yet verified with a real post.
+- Brand-new X / Instagram posts need `--login` (log in yourself, dummy account); `--login` itself is untested.
+- English Wikipedia rejects automated screenshots (429); Telugu Wikipedia works.
+- YouTube / DuckDuckGo licenses are unknown → always `copyright`.
+
+**Not built yet (ideas):** finding the original uploader among re-uploads of the same footage, watermark
+detection, `--retry` for failed downloads, Telugu input, web UI, SearXNG, archive.org saving.
+
+**Firm decisions:** no API keys; never disguise the browser or bypass CAPTCHAs / logins; the tool never
+handles passwords; copyrighted files are kept and marked, never presented as free.
 
 ## Use
 ```bash
@@ -63,7 +119,8 @@ visual-assets\searches\<search-name>\
 Videos are ranked by thumbnail first, so non-matching videos are never downloaded.
 Limits (quality, max length, max size) are in `config.toml` → `[video]`.
 
-- File names start with the match score (e.g. `39_wikimedia_....jpg`) — sort by name to see best matches.
+- File names start with the license mark, then the match score (e.g. `FREE_39_wikimedia_....jpg`) — sort
+  by name to see best matches first.
 - `sources.csv` in each search folder lists score, license and source link for every file.
 - Search only what you already collected (no internet, fast):
   ```bash
@@ -74,10 +131,10 @@ Limits (quality, max length, max size) are in `config.toml` → `[video]`.
 
 ## Use from any other project (MCP)
 `code\mcp_server.py` exposes one tool, `collect_assets(query, images, videos, logos, screenshots,
-posts, clip_seconds, local, previews)`. It returns every saved file path with score / license /
+posts, clip_seconds, local, previews, license, related)`. It returns every saved file path with score / license /
 source and shows the best images inline to the AI.
 
-**Claude Code** — once, available in every project:
+**Claude Code** — once, available in every project (change the paths if the project is elsewhere):
 ```bash
 claude mcp add --scope user asset-collector -- "E:\movies\Assest-collection\.venv\Scripts\python.exe" "E:\movies\Assest-collection\code\mcp_server.py"
 ```
@@ -106,7 +163,7 @@ Everything is in `config.toml`: asset folder path, match thresholds, cache age, 
 1. Create `code/connectors/<name>.py` with:
    ```python
    NAME = "<name>"
-   KINDS = {"image"}            # image / video / logo
+   KINDS = {"image"}            # image / video / logo / screenshot / post
    def search(query, kind, limit) -> list[Asset]: ...
    ```
 2. Add `[connectors.<name>]` with `enabled = true` to `config.toml`.
