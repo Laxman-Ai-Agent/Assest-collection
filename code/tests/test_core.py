@@ -9,9 +9,11 @@ from core import db, pipeline
 from core.models import Asset
 
 # license rule
-for lic in ["CC0", "cc0", "pdm", "Public domain", "CC BY-SA 4.0", "cc-by", "CC BY 2.0"]:
+for lic in ["CC0", "cc0", "pdm", "Public domain", "CC BY-SA 4.0", "cc-by", "CC BY 2.0", "FAL", "GFDL",
+            "Attribution", "Copyrighted free use", "No restrictions", "cc-by-sa"]:
     assert pipeline.is_free(lic), lic
-for lic in ["", "cc-by-nc", "CC BY-NC-SA 3.0", "cc-by-nd", "All rights reserved", "unknown"]:
+for lic in ["", "cc-by-nc", "CC BY-NC-SA 3.0", "cc-by-nd", "All rights reserved", "unknown",
+            "Attribution-NonCommercial", "Attribution-NoDerivs", "CC BY-NC-ND 4.0", "cc-by-nc-nd"]:
     assert not pipeline.is_free(lic), lic
 
 # exact / related / drop
@@ -67,6 +69,20 @@ assert identify("https://x.com/elonmusk").__class__ is type(None)          # pro
 assert identify("https://t.me/durov") is None and identify("https://example.com/a/b") is None
 card = _Image.new("RGB", (100, 100), "white"); card.paste((0, 0, 0), (40, 40, 60, 60))
 assert _Image.open(_io.BytesIO(trim(_png(card), pad=0))).size == (20, 20)     # margins cropped
+
+# license stamp inside the file: lossless, survives copying, re-stamps when status changes
+from core import stamp
+with tempfile.TemporaryDirectory() as d:
+    for ext in ("jpg", "png"):
+        p = Path(d) / f"a.{ext}"
+        noisy.save(p)
+        px = noisy.tobytes() if ext == "png" else _Image.open(p).convert("RGB").tobytes()
+        assert stamp.stamp(p, "copyright", "", "https://src/1")
+        assert "COPYRIGHT | license: license unknown | source: https://src/1" in stamp.read(p)
+        assert _Image.open(p).convert("RGB").tobytes() == px                      # pixels untouched
+        assert stamp.stamp(p, "free", "FAL", "https://src/1") and ": FREE |" in stamp.read(p)
+        if ext == "png":
+            assert list(_Image.open(p).text).count("Description") == 1           # replaced, not duplicated
 
 # slug
 assert pipeline.slug("Hyderabad road, at Night!") == "hyderabad-road-at-night"

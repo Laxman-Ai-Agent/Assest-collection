@@ -17,7 +17,7 @@ import yt_dlp
 from PIL import Image, ImageChops
 from yt_dlp.utils import match_filter_func
 
-from core import net, screenshot
+from core import net, screenshot, stamp
 
 # (platform, pattern). Mastodon is last: its pattern (host/@user/id) is the most generic.
 _PATTERNS = [
@@ -193,6 +193,9 @@ def capture(asset, posts_dir, cfg, vcfg, log=print):
             (tmp / "page.png").write_bytes(page_png)
     if cfg["media"]:
         _media(url, tmp / "media", meta, vcfg, log)
+    for p in tmp.rglob("*"):                  # posts are the author's content: mark inside the files (before hashing)
+        if p.suffix.lower() in (".jpg", ".jpeg", ".png"):
+            stamp.stamp(p, "copyright", "", url)
     meta["files"] = {p.relative_to(tmp).as_posix(): _sha256(p) for p in sorted(tmp.rglob("*")) if p.is_file()}
     (tmp / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
     shutil.rmtree(folder, ignore_errors=True)

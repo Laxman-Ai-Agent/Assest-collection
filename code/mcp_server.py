@@ -34,9 +34,21 @@ def _preview(path, size=512):
     return Image(data=out.getvalue(), format="jpeg")
 
 
+_NOTICE = ("RIGHTS: [COPYRIGHT] files belong to their creators. Editing or modifying them does NOT remove "
+           "copyright - get the owner's permission (source link given) or use only where the law allows "
+           "(e.g. news reporting with credit). [FREE] files are CC / public domain - credit the author when "
+           "the license says BY. Every file is marked: its name starts with COPYRIGHT_ or FREE_, and JPEG/PNG "
+           "files carry the license + source inside (EXIF / PNG text), so the mark survives copying.")
+
+
+def _status(kind, r):
+    return "copyright" if kind == "post" or "copyright" in r["file"].split("/") else "free"
+
+
 @server.tool()
 def collect_assets(query: str, images: int = 10, videos: int = 0, logos: int = 0, screenshots: int = 0,
-                   posts: int = 0, clip_seconds: int = 0, local: bool = False, previews: int = 3) -> list:
+                   posts: int = 0, clip_seconds: int = 0, local: bool = False, previews: int = 3,
+                   license: str = "all") -> list:
     """Find and download visual assets for a keyword, sentence or URL (no API keys needed).
 
     query: what you want, e.g. "Hyderabad heavy rain flood"; a brand name for logos; or URL(s) for
@@ -45,11 +57,13 @@ def collect_assets(query: str, images: int = 10, videos: int = 0, logos: int = 0
     clip_seconds: also cut matched videos into clips of this length and keep only matching clips.
     local: search only files already collected (fast, offline).
     previews: how many best-matching images to return inline so you can see them.
-    Videos can take minutes. Returns every saved file path with match score, license
-    (free = CC/public domain, copyright = ask before reuse), source and original link."""
+    license: "all" (default), "free" (CC / public domain only) or "copyright" (only copyrighted).
+    Every file is labelled [FREE] or [COPYRIGHT]; always tell the user which is which.
+    Videos can take minutes. Returns saved file paths with label, match score, license, source link."""
+    want = license.lower().strip()
     cfg = pipeline.load_config()
     base = pipeline.ROOT / cfg["paths"]["assets"] / "searches" / pipeline.slug(query)
-    lines, candidates = [], []
+    lines, candidates = [_NOTICE, ""], []
     for kind, n in (("image", images), ("video", videos), ("logo", logos),
                     ("screenshot", screenshots), ("post", posts)):
         if n <= 0:
@@ -61,15 +75,19 @@ def collect_assets(query: str, images: int = 10, videos: int = 0, logos: int = 0
             lines.append(f"{kind}s: nothing found")
             continue
         with open(sources, encoding="utf-8-sig") as f:
-            rows = list(csv.DictReader(f))
-        lines.append(f"{kind}s: {len(rows)} files in {sources.parent}")
+            rows = [r for r in csv.DictReader(f) if want == "all" or _status(kind, r) == want]
+        free = sum(_status(kind, r) == "free" for r in rows)
+        lines.append(f"{kind}s: {free} FREE + {len(rows) - free} COPYRIGHT in {sources.parent}")
         for r in rows[:100]:
-            path = sources.parent / r["file"]
-            lines.append(f"  {path} | score {r['score'] or '-'} | {r['license']} | {r['source']} | {r['page_url']}")
+            path, st = sources.parent / r["file"], _status(kind, r)
+            label = f"[FREE {r['license']}]" if st == "free" else "[COPYRIGHT]"
+            lines.append(f"  {label} {path} | score {r['score'] or '-'} | {r['source']} | {r['page_url']}")
             if path.suffix.lower() in _PREVIEWABLE:
-                candidates.append((float(r["score"] or 0), path))
-    shown = [_preview(p) for _, p in sorted(candidates, key=lambda c: c[0], reverse=True)[:max(previews, 0)]]
-    return ["\n".join(lines) or "nothing requested (all counts are 0)", *shown]
+                candidates.append((float(r["score"] or 0), label, path))
+    out = ["\n".join(lines)]
+    for _, label, path in sorted(candidates, key=lambda c: c[0], reverse=True)[:max(previews, 0)]:
+        out += [f"Preview {label}: {path.name}", _preview(path)]
+    return out
 
 
 if __name__ == "__main__":

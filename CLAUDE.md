@@ -13,6 +13,7 @@ User talks in Telugu; reply in Telugu.
 - `code/core/video.py` — yt-dlp download (any site / direct URL) + ffmpeg clip split. Clips cached in `_library/_clips/<sha1>_<N>s/`.
 - `code/core/screenshot.py` — web page capture (Edge via Playwright), error-status + blank checks. `render()` reused by posts.
 - `code/core/post_capture.py` — `identify(url)` (post URL → platform/id/canonical/embed URL) + `capture()`: embed card screenshot, X syndication / Mastodon API metadata, media via yt-dlp, `meta.json` with SHA-256. Cached in `_library/_posts/<platform>_<id>/`.
+- `code/core/stamp.py` — writes FREE/COPYRIGHT + license + source into JPEG EXIF (lossless segment swap) / PNG text. Called on every placed file and every post file (before hashing). Re-stamps if status changes. Library file names stay the sha1 of the ORIGINAL download (content changes after stamping — never re-verify by hash).
 - `code/core/session.py` — optional user-logged-in Edge profile (`--login`). Never handle passwords; user logs in by hand.
 - `code/connectors/*.py` — one source per file, auto-discovered by `connectors/__init__.py`.
 - `code/tests/test_core.py` — single test file.
@@ -21,7 +22,7 @@ User talks in Telugu; reply in Telugu.
 ## Rules
 - Connector contract: `NAME`, `KINDS` (set of "image"/"video"/"logo"), `search(query, kind, limit) -> list[Asset]`. Search only — never download, rank, or save.
 - Add connector = new file + `[connectors.<name>]` in `config.toml`. Remove = delete file. Never edit core for a new source.
-- License: known free (CC0, PDM, CC-BY, CC-BY-SA, public domain) → `free/`; anything else or unknown → `copyright/`.
+- License: `pipeline.is_free` (CC0, PD, CC BY/BY-SA, FAL, GFDL, Attribution...; any NC/ND = not free) → `free/`; else or unknown → `copyright/`. Placed file names start `FREE_` / `COPYRIGHT_`. MCP labels every file and supports `license="free"|"copyright"|"all"`.
 - Check `db.py` cache before any network call, download, or CLIP run. Never redo cached work.
 - One failing connector logs a warning; pipeline continues.
 - No hardcoded settings — add to `config.toml`.

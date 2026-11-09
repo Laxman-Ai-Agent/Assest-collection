@@ -13,17 +13,23 @@ from pathlib import Path
 from PIL import Image
 
 import connectors
-from core import db, net, post_capture, rank, screenshot, video
+from core import db, net, post_capture, rank, screenshot, stamp, video
 
 ROOT = Path(__file__).resolve().parents[2]
 _EXT = {"JPEG": "jpg", "MPO": "jpg", "TIFF": "tif"}
 
 
+_NOT_FREE = {"nc", "nd", "noncommercial", "noderivs", "noderivatives", "non"}      # "non" = "non-commercial"
+_FREE = ("cc0", "pd", "public domain", "fal", "free art", "gfdl", "attribution", "copyrighted free use",
+         "no restrictions", "no known copyright")
+
+
 def is_free(license):
-    s = license.lower().replace(" ", "-").replace("_", "-")
-    if s.startswith(("cc0", "pd", "public-domain")):
-        return True
-    return "cc-by" in s and "nc" not in s and "nd" not in s
+    """CC0 / public domain / CC BY / CC BY-SA / FAL / GFDL... = free. Any NonCommercial or NoDerivs = not."""
+    s = " ".join(re.findall(r"[a-z0-9]+", license.lower()))
+    if _NOT_FREE & set(s.split()):
+        return False
+    return s.startswith(_FREE) or "cc by" in s
 
 
 def slug(text):
@@ -197,11 +203,15 @@ def run(query, kind, limit, root=ROOT, log=print, local=False, clip=0):
                 log(f"  ! not downloaded (network error, too long, or too big; retried after 1 day): {a.title[:50]}")
             continue
         seen.add(sha1)
+        tag = f"{lic.upper()}_"               # COPYRIGHT_ / FREE_: survives copying the file anywhere
         if sc is None:
-            folder, name, score_txt = lic, f"{a.source}_{sha1[:12]}.{ext}", ""
+            folder, name, score_txt = lic, f"{tag}{a.source}_{sha1[:12]}.{ext}", ""
         else:
-            folder, name = f"{lic}/{match(sc, rk)}", f"{round(sc * 100):02d}_{a.source}_{sha1[:12]}.{ext}"
+            folder, name = f"{lic}/{match(sc, rk)}", f"{tag}{round(sc * 100):02d}_{a.source}_{sha1[:12]}.{ext}"
             score_txt = f"{sc:.3f}"
+        # license + source inside the file too (JPEG EXIF / PNG text). ponytail: first stamp wins if the
+        # same bytes later come from a source with another license; the free source is checked first.
+        stamp.stamp(library / f"{sha1}.{ext}", lic, a.license, a.page_url or a.url)
         _link(library / f"{sha1}.{ext}", out_dir / folder / name)
         rows.append([f"{folder}/{name}", score_txt, a.license or "unknown", a.source, a.title, a.page_url, a.url])
 
@@ -216,7 +226,7 @@ def run(query, kind, limit, root=ROOT, log=print, local=False, clip=0):
                 csc = rank.score(emb[0], text_vec) if emb else 0
                 if m := match(csc, rk):
                     cfolder = f"clips/{lic}/{m}"
-                    cname = f"{round(csc * 100):02d}_{sha1[:12]}_{i:03d}{cpath.suffix}"
+                    cname = f"{tag}{round(csc * 100):02d}_{sha1[:12]}_{i:03d}{cpath.suffix}"
                     _link(cpath, out_dir / cfolder / cname)
                     rows.append([f"{cfolder}/{cname}", f"{csc:.3f}", a.license or "unknown", a.source,
                                  f"{a.title} [clip {i}]", a.page_url, a.url])

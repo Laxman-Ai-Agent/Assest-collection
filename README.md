@@ -113,6 +113,18 @@ Everything is in `config.toml`: asset folder path, match thresholds, cache age, 
 
 Remove a source: delete its file, or set `enabled = false`.
 
+## Free vs copyright — the mark stays with the file
+- Folder: `free\` or `copyright\`.
+- File name starts with `FREE_` or `COPYRIGHT_` (so it's visible after copying anywhere).
+- JPEG / PNG files carry the status, license and source link **inside** the file (EXIF Copyright +
+  ImageDescription / PNG text), written losslessly. Check: Windows → file Properties → Details → Copyright.
+  Editors that keep metadata (Photoshop, GIMP, most) keep the mark after you edit.
+- Free = CC0, public domain, CC BY, CC BY-SA, FAL, GFDL... Anything NonCommercial / NoDerivs or
+  unknown = copyright.
+- Editing a copyright image does **not** remove its copyright; the source link is kept so you can
+  ask the owner or give credit.
+- MCP: every file is labelled `[FREE <license>]` / `[COPYRIGHT]`; pass `license="free"` to get only free files.
+
 ## Notes
 - Already-done work (searches, downloads, scores) is cached in `visual-assets\_cache\cache.db` and reused.
 - `copyright\` files are fine to keep, but publishing them (e.g. YouTube) can get a copyright strike.
